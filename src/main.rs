@@ -1,6 +1,6 @@
-use std::collections::HashSet;
+use std::{collections::HashSet, iter::once};
 
-use anyhow::{Context, Result};
+use anyhow::{bail, Context, Result};
 use lopdf::{Document, Object};
 use std::path::PathBuf;
 use structopt::StructOpt;
@@ -46,12 +46,14 @@ fn main() -> Result<()> {
             .context("page object is not a dictionary")?;
 
         if let Ok(annots) = dict.get(b"Annots") {
-            let annots = annots
-                .as_array()
-                .context("page annotations is not an array")?
-                .iter()
-                .flat_map(Object::as_reference)
-                .collect::<HashSet<_>>();
+            let annots = match annots {
+                Object::Array(a) => a
+                    .iter()
+                    .flat_map(Object::as_reference)
+                    .collect::<HashSet<_>>(),
+                Object::Reference(r) => once(r).cloned().collect::<HashSet<_>>(),
+                _ => bail!("annotations are neither an array nor a single reference"),
+            };
             if let Some(replacement_annotations) = reference_objects
                 .iter()
                 .find(|r| annots.len() != r.len() && annots.is_subset(r))
