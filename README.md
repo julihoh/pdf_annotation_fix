@@ -8,6 +8,10 @@ This tool attempts to fix the annotations based on [a technique described by 'th
 
 ## How to use
 
+You can either use the command line app or try the [web app](https://julihoh.github.io/pdf_annotation_fix/web-app/dist/index.html) hosted on GitHub Pages.
+
+### Command Line
+
 You need to have a working [rust toolchain installed](https://www.rust-lang.org/tools/install).
 
 Then just run the program using cargo:
