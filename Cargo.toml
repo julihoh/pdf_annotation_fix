@@ -7,6 +7,17 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-lopdf = "0.26.0"
 structopt = { version = "0.3", default-features = false }
 anyhow = "1.0"
+pdf_fixing_lib = {path="pdf_fixing_lib"}
+
+[workspace]
+members = ["web-app", "pdf_fixing_lib"]
+
+[profile.release]
+# optimization over all codebase ( better optimization, slower build )
+codegen-units = 1
+# optimization for size ( more aggressive )
+opt-level = 'z'
+# link time optimization using using whole-program analysis
+lto = true
