@@ -44,31 +44,7 @@ impl Component for Model {
     fn update(&mut self, msg: Self::Message) -> ShouldRender {
         match msg {
             Msg::Loaded((file_name, file)) => {
-                let mut output = Vec::new();
-                let result =
-                    match pdf_fixing_lib::fix_pdf_annotations(file.content.as_slice(), &mut output)
-                    {
-                        Ok(0) => PDFFixResult::NoAnnotationsFixed,
-                        Ok(number_of_fixed_annotions) => PDFFixResult::Success {
-                            download_url: {
-                                let uint8arr = js_sys::Uint8Array::new(
-                                    &unsafe { js_sys::Uint8Array::view(&output) }.into(),
-                                );
-                                let array = js_sys::Array::new();
-                                array.push(&uint8arr.buffer());
-                                let blob = web_sys::Blob::new_with_u8_array_sequence_and_options(
-                                    &array,
-                                    web_sys::BlobPropertyBag::new().type_("application/pdf"),
-                                )
-                                .unwrap();
-                                web_sys::Url::create_object_url_with_blob(&blob).unwrap()
-                            },
-                            number_of_fixed_annotions,
-                            download_filename: file_name.replace(".pdf", "_recovered.pdf"),
-                        },
-                        Err(e) => PDFFixResult::Error(e),
-                    };
-                self.result = Some(result);
+                self.result = Some(fix_pdf(file, file_name));
                 self.task = None;
                 true
             }
@@ -149,13 +125,13 @@ impl Component for Model {
                 number_of_fixed_annotions,
                 ..
             }) => Some((
-                format!(
-                    "Successfully Recovered {} Annotations :)",
-                    number_of_fixed_annotions
-                ),
+                "Success!".to_string(),
                 "is-success",
                 html! {
-                    {"Hello!"}
+                    {format!(
+                        "Successfully recovered {} annotations :)",
+                        number_of_fixed_annotions
+                    )}
                 },
             )),
             Some(PDFFixResult::NoAnnotationsFixed) => Some((
@@ -257,7 +233,7 @@ impl Component for Model {
                                         <ul>
                                             <li>
                                                 {"No 🍪s whatsoever."}
-                                            </li> 
+                                            </li>
                                             <li>
                                                 {"Thanks to "}
                                                 <a href="https://webassembly.org">{"WebAssembly"}</a>
@@ -275,12 +251,12 @@ impl Component for Model {
             <footer class="footer">
                 <div class="content has-text-centered">
                     <p>
-                        <strong>{"PDF Annotation Recovery Tool"}</strong> 
-                        {" by "} 
+                        <strong>{"PDF Annotation Recovery Tool"}</strong>
+                        {" by "}
                         <a href="https://twitter.com/julihoh_">{"@julihoh_"}</a>
                         {". The source code is licensed "}
                         <a href="http://opensource.org/licenses/mit-license.php">{"MIT"}</a>
-                        {" and is available at "} 
+                        {" and is available at "}
                         <a href="https://github.com/julihoh/pdf_annotation_fix">{"GitHub"}</a>
                         {"."}
                     </p>
@@ -289,6 +265,31 @@ impl Component for Model {
             </>
         }
     }
+}
+
+fn fix_pdf(file: FileData, file_name: String) -> PDFFixResult {
+    let mut output = Vec::new();
+    match pdf_fixing_lib::fix_pdf_annotations(file.content.as_slice(), &mut output) {
+        Ok(0) => PDFFixResult::NoAnnotationsFixed,
+        Ok(number_of_fixed_annotions) => PDFFixResult::Success {
+            download_url: create_download_url(output),
+            number_of_fixed_annotions,
+            download_filename: file_name.replace(".pdf", "_recovered.pdf"),
+        },
+        Err(e) => PDFFixResult::Error(e),
+    }
+}
+
+fn create_download_url(output: Vec<u8>) -> String {
+    let uint8arr = js_sys::Uint8Array::new(&unsafe { js_sys::Uint8Array::view(&output) }.into());
+    let array = js_sys::Array::new();
+    array.push(&uint8arr.buffer());
+    let blob = web_sys::Blob::new_with_u8_array_sequence_and_options(
+        &array,
+        web_sys::BlobPropertyBag::new().type_("application/pdf"),
+    )
+    .unwrap();
+    web_sys::Url::create_object_url_with_blob(&blob).unwrap()
 }
 
 fn main() {
