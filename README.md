@@ -10,6 +10,14 @@ This tool attempts to fix the annotations based on [a technique described by 'th
 
 You can either use the command line app or try the [web app](https://julihoh.github.io/pdf_annotation_fix/web-app/dist/index.html) hosted on GitHub Pages.
 
+### Web App
+
+Thanks to WebAssembly, you can also use this tool from the browser [here](https://julihoh.github.io/pdf_annotation_fix/web-app/dist/index.html).
+
+The web app runs entirely in the browser and the PDF is never sent anywhere.
+
+The source code can be found under `web-app` directory of this repository.
+
 ### Command Line
 
 You need to have a working [rust toolchain installed](https://www.rust-lang.org/tools/install).
