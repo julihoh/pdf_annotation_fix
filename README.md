@@ -28,3 +28,10 @@ Then just run the program using cargo:
 # ...
 recovered 188 annotations
 ```
+
+## Support
+
+Did this tool help you? Consider helping others find it!
+* Mark this [reply](https://discussions.apple.com/thread/253093013?answerId=255798424022#255798424022) on the Apple Community Forum as helpful.
+* Star this repository.
+* Tweet about it! You can tag me [@julihoh_](https://twitter.com/julihoh_).

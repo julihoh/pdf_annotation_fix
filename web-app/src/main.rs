@@ -225,7 +225,7 @@ impl Component for Model {
                             </div>
                             <article class="message is-info">
                                 <div class="message-header">
-                                    <p>{"Privacy Info"}</p>
+                                    <p>{"Privacy"}</p>
                                 </div>
                                 <div class="message-body">
                                     <div class="content">
@@ -239,6 +239,33 @@ impl Component for Model {
                                                 <a href="https://webassembly.org">{"WebAssembly"}</a>
                                                 {" and "} <a href="https://www.rust-lang.org">{"Rust"}</a>
                                                 {", your PDF is processed on your device and can not be tracked by anyone."}
+                                            </li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </article>
+                            <article class="message is-warning">
+                                <div class="message-header">
+                                    <p>{"Support ❤️"}</p>
+                                </div>
+                                <div class="message-body">
+                                    <div class="content">
+                                        {"Did this tool help you? Consider helping others find it!"}
+                                        <ul>
+                                            <li>
+                                                {"Mark this "}
+                                                <a href="https://discussions.apple.com/thread/253093013?answerId=255798424022#255798424022">{"reply"}</a>
+                                                {" on the Apple Community Forum as helpful."}
+                                            </li>
+                                            <li>
+                                                {"Star the "}
+                                                <a href="https://github.com/julihoh/pdf_annotation_fix">{"repository"}</a>
+                                                {" on GitHub."}
+                                            </li>
+                                            <li>
+                                                {"Tweet about it! You can tag me "}
+                                                <a href="https://twitter.com/julihoh_">{"@julihoh_"}</a>
+                                                {"."}
                                             </li>
                                         </ul>
                                     </div>
