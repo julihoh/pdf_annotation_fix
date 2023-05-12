@@ -1,5 +1,6 @@
-use yew::services::reader::{File, FileData, ReaderService, ReaderTask};
-use yew::{classes, html, ChangeData, Component, ComponentLink, Html, ShouldRender};
+use gloo_file::{callbacks::FileReader, File};
+use web_sys::{HtmlInputElement, Event};
+use yew::{classes, html, html::TargetCast, Component, Html};
 
 // Use `wee_alloc` as the global allocator.
 #[global_allocator]
@@ -8,7 +9,7 @@ static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
 type FileName = String;
 
 pub enum Msg {
-    Loaded((FileName, FileData)),
+    Loaded((FileName, Vec<u8>)),
     Files(Vec<File>),
     ToggleByChunks,
 }
@@ -24,8 +25,7 @@ enum PDFFixResult {
 }
 
 pub struct Model {
-    link: ComponentLink<Model>,
-    task: Option<ReaderTask>,
+    task: Option<FileReader>,
     result: Option<PDFFixResult>,
 }
 
@@ -33,15 +33,14 @@ impl Component for Model {
     type Message = Msg;
     type Properties = ();
 
-    fn create(_props: Self::Properties, link: ComponentLink<Self>) -> Self {
+    fn create(_ctx: &yew::Context<Self>) -> Self {
         Self {
-            link,
             task: None,
             result: None,
         }
     }
 
-    fn update(&mut self, msg: Self::Message) -> ShouldRender {
+    fn update(&mut self, ctx: &yew::Context<Self>, msg: Self::Message) -> bool {
         match msg {
             Msg::Loaded((file_name, file)) => {
                 self.result = Some(fix_pdf(file, file_name));
@@ -52,11 +51,15 @@ impl Component for Model {
                 for file in files.into_iter() {
                     let file_name = file.name();
                     let task = {
+                        let link = ctx.link().clone();
                         let file_name = file_name.clone();
-                        let callback = self
-                            .link
-                            .callback(move |data| Msg::Loaded((file_name.clone(), data)));
-                        ReaderService::read_file(file, callback).unwrap()
+
+                        gloo_file::callbacks::read_as_bytes(&file, move |res| {
+                            link.send_message(Msg::Loaded((
+                                file_name,
+                                res.expect("failed to read file"),
+                            )))
+                        })
                     };
                     self.task = Some(task);
                 }
@@ -66,11 +69,7 @@ impl Component for Model {
         }
     }
 
-    fn change(&mut self, _props: Self::Properties) -> ShouldRender {
-        false
-    }
-
-    fn view(&self) -> Html {
+    fn view(&self, ctx: &yew::Context<Self>) -> Html {
         let download_button_text = "2. Save Recovered PDF";
         let save_button = match &self.result {
             Some(PDFFixResult::Success {
@@ -80,7 +79,7 @@ impl Component for Model {
             }) => {
                 html! {
                     <a
-                        class=classes!("button")
+                        class={classes!("button")}
                         href={download_url.clone()}
                         download={download_filename.clone()}
                     >
@@ -91,8 +90,8 @@ impl Component for Model {
             Some(PDFFixResult::NoAnnotationsFixed) => {
                 html! {
                     <a
-                        class=classes!("button")
-                        disabled=true
+                        class={classes!("button")}
+                        disabled={true}
                     >
                         {download_button_text}
                     </a>
@@ -101,8 +100,8 @@ impl Component for Model {
             Some(PDFFixResult::Error(_)) => {
                 html! {
                     <a
-                        class=classes!("button")
-                        disabled=true
+                        class={classes!("button")}
+                        disabled={true}
                     >
                         {download_button_text}
                     </a>
@@ -111,8 +110,8 @@ impl Component for Model {
             None => {
                 html! {
                     <a
-                        class=classes!("button")
-                        disabled=true
+                        class={classes!("button")}
+                        disabled={true}
                     >
                         {download_button_text}
                     </a>
@@ -166,25 +165,29 @@ impl Component for Model {
         };
 
         let file_selector = html! {
-            <div classes=classes!("file")>
+            <div classes={classes!("file")}>
                 <label class="file-label">
                     <input
                         type="file"
                         class="file-input"
-                        multiple=false
+                        multiple={false}
                         accept=".pdf"
                         disabled={self.task.is_some()}
-                        onchange=self.link.callback(move |value| {
-                            let mut result = Vec::new();
-                            if let ChangeData::Files(files) = value {
-                                let files = js_sys::try_iter(&files)
-                                    .unwrap()
-                                    .unwrap()
-                                    .map(|v| File::from(v.unwrap()));
-                                result.extend(files);
-                            }
-                            Msg::Files(result)
-                        })
+                        onchange={
+                            ctx.link().callback(move |e: Event| {
+                                let input: HtmlInputElement = e.target_unchecked_into();
+                                let mut result = Vec::new();
+                                if let Some(files) = input.files() {
+                                    let files = js_sys::try_iter(&files)
+                                        .unwrap()
+                                        .unwrap()
+                                        .map(|v| web_sys::File::from(v.unwrap()))
+                                        .map(File::from);
+                                    result.extend(files);
+                                }
+                                Msg::Files(result)
+                            })
+                        }
                         />
                     <span class="file-cta">
                         <span class="file-label">
@@ -209,7 +212,7 @@ impl Component for Model {
                             {
                                 if let Some((heading, class, content)) = result_message {
                                     html! {
-                                            <article class=classes!("message", class)>
+                                            <article class={classes!("message", class)}>
                                                 <div class="message-header">
                                                     <p>{heading}</p>
                                                 </div>
@@ -294,9 +297,9 @@ impl Component for Model {
     }
 }
 
-fn fix_pdf(file: FileData, file_name: String) -> PDFFixResult {
+fn fix_pdf(file: Vec<u8>, file_name: String) -> PDFFixResult {
     let mut output = Vec::new();
-    match pdf_fixing_lib::fix_pdf_annotations(file.content.as_slice(), &mut output) {
+    match pdf_fixing_lib::fix_pdf_annotations(file.as_slice(), &mut output) {
         Ok(0) => PDFFixResult::NoAnnotationsFixed,
         Ok(number_of_fixed_annotions) => PDFFixResult::Success {
             download_url: create_download_url(output),
@@ -320,5 +323,5 @@ fn create_download_url(output: Vec<u8>) -> String {
 }
 
 fn main() {
-    yew::start_app::<Model>();
+    yew::Renderer::<Model>::new().render();
 }
