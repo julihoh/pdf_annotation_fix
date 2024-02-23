@@ -8,7 +8,8 @@ use anyhow::{bail, Context};
 use lopdf::{Document, Object};
 
 pub fn fix_pdf_annotations(input: impl Read, mut output: impl Write) -> anyhow::Result<usize> {
-    let mut doc = Document::load_from(input).context("unable to parse pdf document")?;
+    let original_doc = Document::load_from(input).context("unable to parse pdf document")?;
+    let mut doc = original_doc.clone();
     let pages = doc.get_pages();
     let reference_objects = doc
         .objects
@@ -35,6 +36,7 @@ pub fn fix_pdf_annotations(input: impl Read, mut output: impl Write) -> anyhow::
                 lopdf::Object::Array(a) => a
                     .iter()
                     .flat_map(Object::as_reference)
+                    .filter(|o| !original_doc.get_object(*o).is_ok_and(Object::is_null))
                     .collect::<HashSet<_>>(),
                 Object::Reference(r) => once(r).cloned().collect::<HashSet<_>>(),
                 _ => bail!("annotations are neither an array nor a single reference"),
